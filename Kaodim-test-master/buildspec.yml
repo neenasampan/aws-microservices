@@ -1,0 +1,10 @@
+version: 0.1
+phases:
+  install:
+    commands:
+      - aws cloudformation package --template-file rubapp/ruby1.yaml --s3-bucket cummins-proj --output-template-file outputSamTemplate.yaml
+artifacts:
+  type: zip
+  files:
+    - ruby1.yaml
+    - outputSamTemplate.yaml
