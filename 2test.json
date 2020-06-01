@@ -1,0 +1,328 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "AWS CloudFormation for Data Extract API",
+	"Resources": {
+		"shoppocgetattributes": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Code": {
+					"S3Bucket": "cf-templates-shoppoc1",
+					"S3Key": "poc-rpp-member-registration-cf.zip"
+				},
+				"FunctionName": "poc-rpp-member-registration-cf",
+				"Handler": "lambda_function.lambda_handler",
+				"MemorySize": 1024,
+				"Role": "arn:aws:iam::751087521896:role/service-role/poc-rpp-get-member-product-lambda-role",
+				"Runtime": "python3.7",
+				"Tags": [{
+						"Key": "CreatedBy",
+						"Value": "Hari"
+					},
+					{
+						"Key": "Trigger",
+						"Value": "ApiGateway"
+					},
+					{
+						"Key": "POC",
+						"Value": "KinesiVideoStreaming-UI"
+					},
+					{
+						"Key": "UseCase",
+						"Value": "This lambda will store the feedback form attribute values to CTR record"
+					}
+				],
+				"Timeout": "03",
+				"Description": "DEV: This lambda will store the feedback form attribute values to CTR record"
+			}
+		},
+		"memberloginlambda": {
+			"Type": "AWS::Lambda::Function",
+			"Properties": {
+				"Code": {
+					"S3Bucket": "cf-templates-shoppoc1",
+					"S3Key": "poc-rpp-member-login-cf.zip"
+				},
+				"FunctionName": "poc-rpp-member-login-cf",
+				"Handler": "lambda_function.lambda_handler",
+				"MemorySize": 1024,
+				"Role": "arn:aws:iam::751087521896:role/service-role/poc-rpp-get-member-product-lambda-role",
+				"Runtime": "python3.7",
+				"Tags": [{
+						"Key": "CreatedBy",
+						"Value": "Hari"
+					},
+					{
+						"Key": "Trigger",
+						"Value": "ApiGateway"
+					},
+					{
+						"Key": "POC",
+						"Value": "KinesiVideoStreaming-UI"
+					},
+					{
+						"Key": "UseCase",
+						"Value": "This lambda will store the feedback form attribute values to CTR record"
+					}
+				],
+				"Timeout": "03",
+				"Description": "DEV: This lambda will store the feedback form attribute values to CTR record"
+			}
+		},
+		"memberregistration": {
+			"Type": "AWS::ApiGateway::RestApi",
+			"Properties": {
+				"Name": "poc-rpp-member-registration-cf",
+				"Description": "API used for invoking Lambda to store the feedback form",
+				"EndpointConfiguration": {
+					"Types": ["REGIONAL"]
+				},
+				"FailOnWarnings": true
+			}
+		},
+		"LambdaPermission": {
+			"Type": "AWS::Lambda::Permission",
+			"Properties": {
+				"Action": "lambda:invokeFunction",
+				"FunctionName": {
+					"Fn::GetAtt": ["shoppocgetattributes", "Arn"]
+				},
+				"Principal": "apigateway.amazonaws.com",
+				"SourceArn": {
+					"Fn::Join": ["",
+						["arn:aws:execute-api:", {
+							"Ref": "AWS::Region"
+						}, ":", {
+							"Ref": "AWS::AccountId"
+						}, ":", {
+							"Ref": "memberregistration"
+						}, "/*"]
+					]
+				}
+			}
+		},
+		"LambdaPermission1": {
+			"Type": "AWS::Lambda::Permission",
+			"Properties": {
+				"Action": "lambda:invokeFunction",
+				"FunctionName": {
+					"Fn::GetAtt": ["memberloginlambda", "Arn"]
+				},
+				"Principal": "apigateway.amazonaws.com",
+				"SourceArn": {
+					"Fn::Join": ["",
+						["arn:aws:execute-api:", {
+							"Ref": "AWS::Region"
+						}, ":", {
+							"Ref": "AWS::AccountId"
+						}, ":", {
+							"Ref": "memberregistration"
+						}, "/*"]
+					]
+				}
+			}
+		},
+		"ApiDeployment": {
+			"Type": "AWS::ApiGateway::Deployment",
+			"DependsOn": ["APIMethod","APIMethod"],
+			"Properties": {
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"StageName": "test"
+			}
+		},
+		"APiResource": {
+			"Type": "AWS::ApiGateway::Resource",
+			"Properties": {
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"ParentId": {
+					"Fn::GetAtt": ["memberregistration", "RootResourceId"]
+				},
+				"PathPart": "member-registration"
+			}
+		},
+		"APIMethod": {
+			"DependsOn": ["LambdaPermission", "APiResource"],
+			"Type": "AWS::ApiGateway::Method",
+			"Properties": {
+				"AuthorizationType": "NONE",
+				"HttpMethod": "POST",
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"ResourceId": {
+					"Ref": "APiResource"
+				},
+				"Integration": {
+					"Type": "AWS_PROXY",
+					"IntegrationHttpMethod": "POST",
+					"Uri": {
+						"Fn::Join": ["",
+							["arn:aws:apigateway:", {
+								"Ref": "AWS::Region"
+							}, ":lambda:path/2015-03-31/functions/", {
+								"Fn::GetAtt": ["shoppocgetattributes", "Arn"]
+							}, "/invocations"]
+						]
+					},
+					"IntegrationResponses": [{
+						"StatusCode": "200"
+					}]
+				},
+				"OperationName": "/",
+				"MethodResponses": [{
+					"ResponseModels": {
+						"application/json": "Empty"
+					},
+					"ResponseParameters": {
+						"method.response.header.Access-Control-Allow-Origin": "true"
+					},
+					"StatusCode": 200
+				}]
+
+			}
+		},
+		"APiResource1": {
+			"Type": "AWS::ApiGateway::Resource",
+			"Properties": {
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"ParentId": {
+					"Fn::GetAtt": ["memberregistration", "RootResourceId"]
+				},
+				"PathPart": "member-login"
+			}
+		},
+		"APIMethod1": {
+			"DependsOn": ["LambdaPermission", "APiResource1"],
+			"Type": "AWS::ApiGateway::Method",
+			"Properties": {
+				"AuthorizationType": "NONE",
+				"HttpMethod": "POST",
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"ResourceId": {
+					"Ref": "APiResource1"
+				},
+				"Integration": {
+					"Type": "AWS_PROXY",
+					"IntegrationHttpMethod": "POST",
+					"Uri": {
+						"Fn::Join": ["",
+							["arn:aws:apigateway:", {
+								"Ref": "AWS::Region"
+							}, ":lambda:path/2015-03-31/functions/", {
+								"Fn::GetAtt": ["memberloginlambda", "Arn"]
+							}, "/invocations"]
+						]
+					},
+					"IntegrationResponses": [{
+						"StatusCode": "200"
+					}]
+				},
+				"OperationName": "/",
+				"MethodResponses": [{
+					"ResponseModels": {
+						"application/json": "Empty"
+					},
+					"ResponseParameters": {
+						"method.response.header.Access-Control-Allow-Origin": "true"
+					},
+					"StatusCode": 200
+				}]
+
+			}
+		},
+		"ApiGatewayMethod": {
+			"Type": "AWS::ApiGateway::Method",
+			"Properties": {
+				"AuthorizationType": "NONE",
+				"HttpMethod": "OPTIONS",
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"ResourceId": {
+					"Ref": "APiResource"
+				},
+				"Integration": {
+					"ConnectionType": "INTERNET",
+					"IntegrationResponses": [{
+						"ResponseParameters": {
+							"method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+							"method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS'",
+							"method.response.header.Access-Control-Allow-Origin": "'*'"
+						},
+						"ResponseTemplates": {
+							"application/json": " "
+						},
+						"StatusCode": 200
+					}],
+					"PassthroughBehavior": "WHEN_NO_TEMPLATES",
+					"RequestTemplates": {
+						"application/json": "{\"statusCode\": 200}"
+					},
+					"Type": "MOCK",
+					"TimeoutInMillis": 29000
+				},
+				"OperationName": "mock",
+				"MethodResponses": [{
+					"ResponseModels": {
+						"application/json": "Empty"
+					},
+					"ResponseParameters": {
+						"method.response.header.Access-Control-Allow-Headers": "true",
+						"method.response.header.Access-Control-Allow-Methods": "true",
+						"method.response.header.Access-Control-Allow-Origin": "true"
+					},
+					"StatusCode": 200
+				}]
+			}
+		},
+		"ApiModel": {
+			"Type": "AWS::ApiGateway::Model",
+			"Properties": {
+				"ContentType": "application/json",
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"Schema": {}
+			}
+		},
+		"ApiGatewayStage": {
+			"Type": "AWS::ApiGateway::Stage",
+			"Properties": {
+				"DeploymentId": {
+					"Ref": "ApiDeployment"
+				},
+				"Description": "API Stage Dev",
+				"RestApiId": {
+					"Ref": "memberregistration"
+				},
+				"StageName": "Dev"
+			}
+		}
+	},
+	"Outputs": {
+		"memberregistrationURI": {
+			"Description": "URI of memberregistrationAPI",
+			"Value": {
+				"Fn::Join": [":", [
+					"https://", {
+						"Ref": "memberregistration"
+					},
+					".execute-api.", {
+						"Ref": "AWS::Region"
+					},
+					".amazonaws.com/", {
+						"Ref": "ApiGatewayStage"
+					}
+				]]
+
+			}
+		}
+	}
+}

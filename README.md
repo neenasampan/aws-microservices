@@ -1,2 +1,2 @@
-# aws-microservices
-this is a demo for building microservices on AWS using Cloudformation templates
+# aws-microservices-cloudformation
+this repo has json and yaml stacks that can start AWS microservices
